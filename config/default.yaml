@@ -1,0 +1,155 @@
+# Default configuration for geodata enrichment toolkit
+
+# Core enrichment settings
+enrichment:
+  # File paths will be overridden by CLI arguments if provided
+  input_file: null  # Required: Path to input CSV file
+  output_file: null # Required: Path to output CSV file
+  
+  # Processing settings
+  batch_size: 100
+  h3_resolution: 9  # H3 grid resolution (7-12)
+  progress_log_interval: 1000
+  
+  # Feature flags
+  validate_coordinates: true
+  enrich_addresses: true
+  standardize_arabic: true
+  add_uae_parsing: true
+  cache_responses: true
+  
+  # Output format settings
+  geometry_format: "wkb"  # Options: "wkb", "wkt", "both"
+  error_handling: "warn"  # Options: "strict", "warn", "ignore"
+
+  # Data processing options
+  assume_missing: true
+  dtype_backend: "numpy"  # Options: "numpy", "pyarrow"
+  na_values: ["", "NA", "N/A", "null", "NULL"]
+  low_memory: false
+
+# Validation rules
+validation:
+  coordinates:
+    lat_min: -90.0
+    lat_max: 90.0
+    lng_min: -180.0
+    lng_max: 180.0
+    require_precision: 6
+  
+  address:
+    required_fields: ["country_code"]
+    postal_code_validation: true
+    normalize_abbreviations: true
+    strict_iso3166: false
+
+# Geocoding service settings
+geocoding:
+  nominatim:
+    user_agent: "GeoDataEnricher/1.0"
+    base_url: "https://nominatim.openstreetmap.org/reverse"
+    timeout: 10
+    max_retries: 3
+    retry_delay: 1.0
+    zoom: 18
+    address_details: true
+  
+  rate_limiting:
+    base_delay: 1.0
+    jitter: 0.5
+    burst_size: 5
+    burst_delay: 2.0
+    max_retries: 3
+    retry_delay: 1.0
+
+  http:
+    retry_strategy:
+      total: 3
+      backoff_factor: 0.5
+      status_forcelist: [429, 500, 502, 503, 504]
+      allowed_methods: ["GET"]
+
+# UAE specific settings
+uae_address:
+  emirate_matching_threshold: 80
+  area_matching_threshold: 80
+  po_box_validation: true
+  makani_validation: true
+  standardize_area_names: true
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(levelname)s - [%(name)s] - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  file: null  # Optional: Path to log file
+  console: true
+  rich_formatting: true
+  rich_tracebacks: true
+  log_file_timestamp: true  # Adds timestamp to log filename
+  rotation: null  # Optional: Log rotation settings
+
+# Dask configuration
+dask:
+  # Cluster settings
+  cluster:
+    type: "local"  # Options: "local", "distributed"
+    scheduler: "threads"  # Options: "threads", "processes", "single-threaded"
+    n_workers: null  # Defaults to number of CPU cores
+    threads_per_worker: 1
+    memory_limit: "0"  # Memory limit per worker (e.g., "2GB")
+    processes: true
+    dashboard_address: ":8787"  # null for no dashboard
+    local_directory: null  # Optional: Directory for spilling to disk
+
+  # Computation settings
+  compute:
+    blocksize: "64MB"  # Dask DataFrame partition size
+    partition_size: "64MB"
+    assume_missing: true
+    dtype_backend: "numpy"
+    low_memory: false
+
+  # Advanced settings
+  advanced:
+    retries: 3
+    retry_delay: 1
+    worker_startup_timeout: 60
+    worker_death_timeout: 60
+
+# Cache settings
+cache:
+  enabled: true
+  type: "memory"  # Options: "memory", "disk"
+  max_size: 10000
+  ttl: 3600  # Time to live in seconds
+  directory: ".cache"  # Used only if type is "disk"
+  compress: false
+  protocol: "pickle"  # Options: "pickle", "json"
+
+# Performance tuning
+performance:
+  chunk_size: 10000  # Size of chunks for parallel processing
+  min_partition_size: "32MB"
+  max_partition_size: "128MB"
+  compression: null  # Optional compression for output (e.g., "gzip", "bz2")
+  write_mode: "single_file"  # Options: "single_file", "partitioned"
+  optimize_dtypes: true
+  use_thread_pool: true
+  thread_pool_size: null  # Defaults to number of CPU cores * 2
+
+  # Progress tracking
+  progress:
+    enabled: true
+    update_interval: 1000
+    spinner: true
+    time_elapsed: true
+    rich_progress: true
+
+# Development and debugging
+development:
+  debug: false
+  verbose: false
+  profile: false
+  profile_output: "profile.stats"
+  raise_warnings: false

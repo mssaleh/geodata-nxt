@@ -1,5 +1,5 @@
 """
-Address standardization components for geodata.py
+Address standardization with focus on Arabic and mixed-language content.
 ----------------------------------------------
 
 This module provides functionality for standardizing address data,
@@ -16,20 +16,19 @@ Features:
 
 import re
 import json
+import logging
 from typing import Dict, Optional, List, Union, Set
 from dataclasses import dataclass
+from collections import defaultdict
 import pycountry
 from langdetect import detect, DetectorFactory
 import arabic_reshaper
 from bidi.algorithm import get_display
-import logging
-from collections import defaultdict
 from fuzzywuzzy import fuzz
 from unidecode import unidecode
 
 # Set seed for consistent language detection
 DetectorFactory.seed = 0
-
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -48,12 +47,10 @@ class AddressComponents:
     iso3166_2: Optional[str] = None
 
 class AddressStandardizer:
-    """
-    Handles standardization of address data with special focus on
-    Arabic text and mixed language content.
-    """
+    """Handles address standardization with Arabic text support."""
     
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize standardizer with country and mapping data."""
         self._load_country_data()
         self._initialize_cached_data()
     
@@ -79,7 +76,7 @@ class AddressStandardizer:
         }
     
     def _initialize_cached_data(self) -> None:
-        """Initialize cached data for faster processing."""
+        """Initialize cache for translations and ISO codes."""
         self.cached_translations: Dict[str, str] = {}
         self.cached_iso_codes: Dict[str, str] = {}
     
@@ -122,12 +119,14 @@ class AddressStandardizer:
             
             # Handle district
             components.district = self._standardize_district(
-                address_data.get('ward') or address_data.get('district'),
+                address_data.get('district') or address_data.get('ward'),
                 components.city
             )
             
             # Handle street
-            components.street = self._standardize_street(address_data.get('street'))
+            components.street = self._standardize_street(
+                address_data.get('street')
+            )
             
             # Handle postal code
             components.postal_code = self._standardize_postal_code(
@@ -188,7 +187,8 @@ class AddressStandardizer:
                 best_match = None
                 best_score = 0
                 
-                for c in pycountry.countries:
+                # for c in pycountry.countries:
+                for c in self.countries.values():
                     score = fuzz.ratio(cleaned_country.lower(), c.name.lower())
                     if score > best_score and score > 80:  # Threshold for matching
                         best_score = score
@@ -226,15 +226,14 @@ class AddressStandardizer:
         try:
             # Clean the state name
             cleaned_state = self._clean_text(state)
-            
             # Check cache first
             cache_key = f"{country_code}:{cleaned_state}"
+            
             if cache_key in self.cached_iso_codes:
                 return self.cached_iso_codes[cache_key]
             
             # Get subdivisions for the country
             country_subdivisions = self.subdivisions[country_code]
-            
             # Try to find the best match
             best_match = None
             best_score = 0
@@ -254,7 +253,6 @@ class AddressStandardizer:
             if best_match:
                 result['state'] = best_match.name
                 result['iso3166_2'] = best_match.code
-                
                 # Cache the result
                 self.cached_iso_codes[cache_key] = result
                 
@@ -291,7 +289,7 @@ class AddressStandardizer:
             # For example, checking against a database of city names
             
             return cleaned_city
-            
+
         except Exception as e:
             logger.warning(f"Error standardizing city: {str(e)}")
             return city
@@ -304,7 +302,6 @@ class AddressStandardizer:
         """Standardize district/ward name."""
         if not district:
             return None
-            
         try:
             return self._clean_text(district)
         except Exception as e:
@@ -315,7 +312,6 @@ class AddressStandardizer:
         """Standardize street address."""
         if not street:
             return None
-            
         try:
             return self._clean_text(street)
         except Exception as e:
@@ -337,9 +333,8 @@ class AddressStandardizer:
             
             # Add country-specific postal code formatting here if needed
             # For example, UAE postal code format
-            if country_code == 'AE':
-                if len(cleaned) != 6:
-                    return None
+            if country_code == 'AE' and len(cleaned) != 6:
+                return None
             
             return cleaned
             
@@ -424,9 +419,7 @@ class AddressStandardizer:
         return ', '.join(filter(None, parts))
 
 class AddressValidator:
-    """
-    Validates standardized address components.
-    """
+    """Validates standardized address components."""
     
     def validate_components(self, components: AddressComponents) -> Dict[str, bool]:
         """
