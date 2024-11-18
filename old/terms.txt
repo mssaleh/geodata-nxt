@@ -1,0 +1,16 @@
+barber shop
+beautician
+beauty salon
+foot care
+hair care
+hair salon
+health
+makeup artist
+massage
+nail salon
+physiotherapist
+sauna
+skin care clinic
+spa
+wellness center
+yoga studio
